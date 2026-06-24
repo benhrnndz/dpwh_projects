@@ -5,20 +5,20 @@ Mapping the Correlation Between Completed Public Works & Urban Flood
 Resilience in NCR  --  PREPROCESSING for SPEARMAN + MLR
 ----------------------------------------------------------------------------
 SKEWNESS CHECK RESULTS (run before this script):
-  perc_total_area_flooded : +4.612  SKEWED  -> use Spearman, not Pearson
+  total_area_flooded_sq_km : +4.612  SKEWED  -> use Spearman, not Pearson
   pop_exposed             : +1.686  SKEWED  -> use Spearman, not Pearson
   project-type columns    : all < |1.0|  -> acceptable
 
 FINAL 9-FIELD SET:
   SPATIAL : ncr_district
   CAUSE   : n_projects_completed_before_flood
-  OUTCOME : perc_total_area_flooded
+  OUTCOME : total_area_flooded_sq_km
   OUTCOME : pop_exposed
   TYPE    : n_flood_mitigation_completed
   TYPE    : n_drainage_completed
-  TYPE    : n_rehabilitation_completed
   TYPE    : n_slope_protection_completed
   TYPE    : n_revetment_completed
+  TYPE    : n_dike_completed
 
 NOTE: No binning here. Spearman and MLR work on raw numbers.
       Columns are cleaned and standardized only.
@@ -60,18 +60,18 @@ df["ncr_district"] = df["ncr_district"].str.strip().replace(district_map)
 keep = [
     "ncr_district",
     "n_projects_completed_before_flood",
-    "perc_total_area_flooded",
+    "total_area_flooded_sq_km",
     "pop_exposed",
     "n_flood_mitigation_completed",
     "n_drainage_completed",
-    "n_rehabilitation_completed",
     "n_slope_protection_completed",
     "n_revetment_completed",
+    "n_dike_completed",
 ]
 clean = df[keep].copy()
 
 # Missing values (none here, but explicit)
-clean = clean.dropna(subset=["perc_total_area_flooded"]).reset_index(drop=True)
+clean = clean.dropna(subset=["total_area_flooded_sq_km"]).reset_index(drop=True)
 num_cols = clean.select_dtypes(include="number").columns
 clean[num_cols] = clean[num_cols].fillna(clean[num_cols].median())
 print(f"[clean] shape: {clean.shape} | missing: {int(clean.isna().sum().sum())}")
@@ -81,13 +81,13 @@ print(f"[clean] districts: {clean['ncr_district'].value_counts().to_dict()}")
 clean.columns = [
     "District",
     "Projects_Completed",
-    "Flooding_Pct",
+    "Area_Flooded_sqkm",
     "Pop_Exposed",
     "FloodMitigation_Done",
     "Drainage_Done",
-    "Rehabilitation_Done",
     "SlopeProtection_Done",
     "Revetment_Done",
+    "Dike_Done",
 ]
 
 # 3. DESCRIPTIVE STATS -----------------------------------------------------
@@ -99,8 +99,8 @@ print(desc)
 # 4. SPEARMAN CORRELATION MATRIX -------------------------------------------
 # Correlate each public-works column against each flood-outcome column
 works_cols   = ["Projects_Completed", "FloodMitigation_Done", "Drainage_Done",
-                "Rehabilitation_Done", "SlopeProtection_Done", "Revetment_Done"]
-outcome_cols = ["Flooding_Pct", "Pop_Exposed"]
+                "SlopeProtection_Done", "Revetment_Done", "Dike_Done"]
+outcome_cols = ["Area_Flooded_sqkm", "Pop_Exposed"]
 
 print("\n[spearman] Correlation vs flood outcomes (rho | p-value):")
 spearman_rows = []
@@ -124,7 +124,7 @@ for w in works_cols:
         full_corr.loc[w, o] = round(rho, 3)
 
 # 5. MLR -------------------------------------------------------------------
-# Model 1: Flooding_Pct ~ all works columns
+# Model 1: Area_Flooded_sqkm ~ all works columns
 # Model 2: Pop_Exposed  ~ all works columns
 X = clean[works_cols]
 
